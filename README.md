@@ -1,4 +1,4 @@
-install express dotenv mongoose jsonwebtoken bcrypt cookie-parser cors morgan express-validator 
+install express dotenv mongoose jsonwebtoken bcrypt cookie-parser cors morgan express-validator ioredis
 
 create .env file and put
 
