@@ -1,5 +1,7 @@
 install express dotenv mongoose jsonwebtoken bcrypt cookie-parser cors morgan express-validator 
 
+for frontend install react-router-dom axios
+
 create .env file and put
 
 PORT = 3000
@@ -13,3 +15,11 @@ REDIS_PORT = 10871
 REDIS_PASSWORD = FuaNvXusoOzyygdwyCDXFaLu3GrrRBH5
 
 in .env file
+
+for front end create .env an put
+
+VITE_API_URL = http://localhost:3000
+
+in .env frontend file
+
+
