@@ -1,6 +1,6 @@
-install express dotenv mongoose jsonwebtoken bcrypt cookie-parser cors morgan express-validator ioredis
+install express, dotenv, mongoose, jsonwebtoken, bcrypt, cookie-parser, cors, morgan, express-validator, ioredis
 
-for frontend install react-router-dom axios
+for frontend install react-router-dom, axios, remixicon
 
 create .env file and put
 
