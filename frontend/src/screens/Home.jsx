@@ -1,30 +1,47 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { UserContext } from "../context/user.context";
 import axios from "../config/axios";
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from "react-router-dom";
 
 const Home = () => {
   const { user } = useContext(UserContext);
   const [isModalOpen, setisModalOpen] = useState(false);
-  const [projectName, setProjectName] = useState(null)
+  const [projectName, setProjectName] = useState(null);
+  const [project, setProject] = useState([]);
+
+  const navigate = useNavigate()
 
   function createProject(e) {
     e.preventDefault();
-    console.log({projectName})
+    console.log({ projectName });
 
-    axios.post('/projects/create', {
-      name: projectName,
-    }).then((res)=>{
-      console.log(res)
-      setisModalOpen(false)
-    }).catch((error)=>{
-      console.log(error)
-    })
+    axios
+      .post("/projects/create", {
+        name: projectName,
+      })
+      .then((res) => {
+        console.log(res);
+        setisModalOpen(false);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
   }
+
+  useEffect(() => {
+    axios
+      .get("/projects/all")
+      .then((res) => {
+        setProject(res.data.projects);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  }, []);
 
   return (
     <main className="p-4">
-      <div className="projects">
+      <div className="projects flex flex-wrap gap-3">
         <button
           onClick={() => setisModalOpen(true)}
           className="project p-4 border border-slate-300 rounded-md"
@@ -32,6 +49,20 @@ const Home = () => {
           New Project
           <i className="ri-link-m ml-2"></i>
         </button>
+
+        {project.map((project) => (
+          <div
+            key={project._id} onClick={()=>{navigate(`/project`,{
+              state:{project}
+            })}}
+            className="project flex flex-col gap-2 cursor-pointer p-4 border border-slate-300 rounded-md min-w-52 hover:bg-slate-400"
+          >
+            <h2 className="font-semibold">{project.name}</h2>
+            <div className="flex gap-2">
+              <p><small><i className="ri-user-line"></i>Collaborators</small> : </p>
+              {project.users.length}</div>
+          </div>
+        ))}
       </div>
 
       {isModalOpen && (
