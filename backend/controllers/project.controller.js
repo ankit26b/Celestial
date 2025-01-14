@@ -24,7 +24,6 @@ export const createProject = async (req, res) => {
   }
 };
 
-
 export const getAllProject = async(req,res)=>{
   try {
     const loggedInUser = await userModel.findOne({
@@ -52,15 +51,15 @@ export const addUserToProject = async(req,res)=>{
   }
 
   try {
-    const {projectId, user} = req.body
+    const {projectId, users} = req.body
 
     const loggedInUser = await userModel.findOne({
       email: req.user.email
     })
 
-    const project = await projectService.addUserToProject({
+    const project = await projectService.addUsersToProject({
       projectId,
-      user,
+      users,
       userId:loggedInUser._id
     })
 

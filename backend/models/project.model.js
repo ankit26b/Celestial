@@ -14,8 +14,6 @@ const projectSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref:'user'
     }]
-
-
 })
 
 const Project = mongoose.model('project', projectSchema)
