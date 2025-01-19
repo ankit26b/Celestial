@@ -2,11 +2,28 @@ import React, { useState, useEffect, useContext, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { UserContext } from "../context/user.context";
 import axios from "../config/axios";
+import Markdown from "markdown-to-jsx";
+import hljs from "highlight.js";
+import "highlight.js/styles/github.css";
 import {
   initializeSocket,
   receiveMessage,
   sendMessage,
 } from "../config/socket";
+
+function SyntaxHighlightedCode(props) {
+  const ref = useRef(null);
+
+  React.useEffect(() => {
+    if (ref.current && props.className?.includes("lang-") && hljs) {
+      hljs.highlightElement(ref.current);
+
+      ref.current.removeAttribute("data-highlighted");
+    }
+  }, [props.className, props.children]);
+
+  return <code {...props} ref={ref} />;
+}
 
 const Project = () => {
   const location = useLocation();
@@ -19,9 +36,10 @@ const Project = () => {
 
   const { user } = useContext(UserContext);
 
-  const messageBox = React.createRef();
+  const messageBox = useRef(null);
 
   const [users, setUsers] = useState([]);
+  const [messages, setMessages] = useState([]);
 
   const handleUserClick = (id) => {
     setSelectedUserId((prevSelectedUserId) => {
@@ -51,25 +69,52 @@ const Project = () => {
       });
   }
 
-  function scrollToBottom() {
-    messageBox.current.scrollTop = messageBox.current.scrollHeight
-  }
-
   const send = () => {
     sendMessage("project-message", {
       message,
-      sender: user._id,
+      sender: user,
     });
-    appendOutgoingMessage(message);
+    setMessages((prevMessages) => [...prevMessages, { sender: user, message }]);
     setMessage("");
   };
+
+  function WriteAiMessage(message) {
+    let messageText;
+  
+    try {
+      const messageObject = JSON.parse(message);
+      messageText = messageObject.text;
+    } catch (error) {
+      console.error("Invalid JSON:", error);
+      messageText = message;
+    }
+  
+    return (
+      <div className="overflow-auto bg-slate-950 text-white rounded-sm p-2">
+        <Markdown
+          children={messageText}
+          options={{
+            overrides: {
+              code: SyntaxHighlightedCode,
+            },
+          }}
+        />
+      </div>
+    );
+  }
+  
 
   useEffect(() => {
     initializeSocket(project._id);
 
     receiveMessage("project-message", (data) => {
       console.log(data);
-      appendIncomingMessage(data);
+
+      if (data.sender._id === "ai") {
+        const aiMessage = data.message;
+        console.log("AI Message:", aiMessage);
+      }
+      setMessages((prevMessages) => [...prevMessages, data]);
     });
 
     axios
@@ -89,28 +134,14 @@ const Project = () => {
       });
   }, []);
 
-  function appendIncomingMessage(messageObject) {
-    const messageBox = document.querySelector(".message-box");
-    const message = document.createElement("div");
-    message.classList.add("message", "max-w-56", "flex", "flex-col");
-    message.innerHTML = `<small class='opacity-65 text-xs'>${messageObject.send} <p class='text-sm'> ${messageObject.message}</p>`;
-    messageBox.appendChild(message);
-    scrollToBottom();
+  function scrollToBottom() {
+    messageBox.current.scrollTop = messageBox.current.scrollHeight;
   }
-  function appendOutgoingMessage(message) {
-    const messageBox = document.querySelector(".message-box");
-    const newMessage = document.createElement("div");
-    newMessage.classList.add(
-      "ml-auto",
-      "message",
-      "max-w-56",
-      "flex",
-      "flex-col"
-    );
-    newMessage.innerHTML = `<small class='opacity-65 text-xs'>${user.email} <p class='text-sm'> ${message}</p>`;
-    messageBox.appendChild(newMessage);
-    scrollToBottom()
-  }
+  useEffect(() => {
+    if (messageBox.current) {
+      messageBox.current.scrollTop = messageBox.current.scrollHeight;
+    }
+  }, [messages]);
 
   return (
     <main className="h-screen w-screen flex">
@@ -129,13 +160,39 @@ const Project = () => {
           </button>
         </header>
 
-        <div className="convertsation-area flex-grow flex flex-col pt-14 pb-10 relative">
-         
-            <div
-              ref={messageBox}
-              className="message-box p-1 flex-grow flex flex-col gap-1 overflow-auto scroll max"
-            ></div>
-         
+        <div className="conversation-area flex-grow flex flex-col pt-14 pb-10 relative">
+          <div
+            ref={messageBox}
+            className="message-box p-1 flex-grow flex flex-col gap-1 overflow-auto max-h-full scrollbar-hide"
+          >
+            {messages.map((msg, index) => {
+              if (!msg?.sender || !msg?.message) return null; // Skip if data is missing
+
+              return (
+                <div
+                  key={index}
+                  className={`${
+                    msg.sender?._id === "ai" ? "max-w-80" : "max-w-52"
+                  } ${
+                    msg.sender?._id === user._id.toString()
+                      ? "ml-auto"
+                      : "mr-auto"
+                  } message flex flex-col p-2 bg-slate-50 w-fit rounded-md`}
+                >
+                  <small className="opacity-65 text-xs">
+                    {msg.sender.email}
+                  </small>
+                  <div className="text-sm">
+                    {msg.sender._id === "ai" ? (
+                      WriteAiMessage(msg.message)
+                    ) : (
+                      <p>{msg.message}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
           <div className="inputField w-full flex absolute bottom-0">
             <input
