@@ -209,7 +209,7 @@ const Project = () => {
         </div>
 
         <div
-          className={`sidepanel w-36 h-60 bg-slate-100 min-w-96 h-full flex flex-col gap-2 absolute transition-all ${
+          className={`sidepanel w-36 bg-slate-100 min-w-96 h-full flex flex-col gap-2 absolute transition-all ${
             isSidePanelOpen ? "translate-x-0" : "-translate-x-full"
           } top-0`}
         >
