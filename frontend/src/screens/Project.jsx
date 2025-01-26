@@ -4,7 +4,7 @@ import { UserContext } from "../context/user.context";
 import axios from "../config/axios";
 import Markdown from "markdown-to-jsx";
 import hljs from "highlight.js";
-import "highlight.js/styles/github.css";
+import { getWebcontainer } from "../config/webContainer";
 import {
   initializeSocket,
   receiveMessage,
@@ -15,8 +15,8 @@ function SyntaxHighlightedCode(props) {
   const ref = useRef(null);
 
   React.useEffect(() => {
-    if (ref.current && props.className?.includes("lang-") && hljs) {
-      hljs.highlightElement(ref.current);
+    if (ref.current && props.className?.includes("lang-") && window.hljs) {
+      window.hljs.highlightElement(ref.current);
 
       ref.current.removeAttribute("data-highlighted");
     }
@@ -36,10 +36,19 @@ const Project = () => {
 
   const { user } = useContext(UserContext);
 
-  const messageBox = useRef(null);
+  const messageBox = React.createRef();
 
   const [users, setUsers] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [fileTree, setFileTree] = useState({});
+
+  const [currentFile, setCurrentFile] = useState(null);
+  const [openFiles, setOpenFiles] = useState([]);
+
+  const [webContainer, setWebContainer] = useState(null);
+  const [iframeUrl, setIframeUrl] = useState(null);
+
+  const [runProcess, setRunProcess] = useState(null);
 
   const handleUserClick = (id) => {
     setSelectedUserId((prevSelectedUserId) => {
@@ -80,7 +89,7 @@ const Project = () => {
 
   function WriteAiMessage(message) {
     let messageText;
-  
+
     try {
       const messageObject = JSON.parse(message);
       messageText = messageObject.text;
@@ -88,7 +97,7 @@ const Project = () => {
       console.error("Invalid JSON:", error);
       messageText = message;
     }
-  
+
     return (
       <div className="overflow-auto bg-slate-950 text-white rounded-sm p-2">
         <Markdown
@@ -102,17 +111,24 @@ const Project = () => {
       </div>
     );
   }
-  
 
   useEffect(() => {
     initializeSocket(project._id);
 
-    receiveMessage("project-message", (data) => {
-      console.log(data);
+    if (!webContainer) {
+      getWebcontainer().then((container) => {
+        setWebContainer(container);
+        console.log("container started");
+      });
+    }
 
-      if (data.sender._id === "ai") {
-        const aiMessage = data.message;
-        console.log("AI Message:", aiMessage);
+    receiveMessage("project-message", (data) => {
+      const message = JSON.parse(data.message);
+      console.log(message);
+      webContainer?.mount(message.fileTree);
+
+      if (message.fileTree) {
+        setFileTree(message.fileTree || {});
       }
       setMessages((prevMessages) => [...prevMessages, data]);
     });
@@ -122,6 +138,7 @@ const Project = () => {
       .then((res) => {
         console.log(res.data.project);
         setProject(res.data.project);
+        setFileTree(res.data.project.fileTree || {});
       });
 
     axios
@@ -134,14 +151,34 @@ const Project = () => {
       });
   }, []);
 
-  function scrollToBottom() {
-    messageBox.current.scrollTop = messageBox.current.scrollHeight;
-  }
+  useEffect(() => {
+    console.log("Current File:", currentFile);
+    console.log("FileTree:", fileTree);
+  }, [currentFile, fileTree]);
+
   useEffect(() => {
     if (messageBox.current) {
       messageBox.current.scrollTop = messageBox.current.scrollHeight;
     }
   }, [messages]);
+
+  function saveFileTree(ft) {
+    axios
+      .put("/projects/update-file-tree", {
+        projectId: project._id,
+        fileTree: ft,
+      })
+      .then((res) => {
+        console.log(res.data);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  }
+
+  function scrollToBottom() {
+    messageBox.current.scrollTop = messageBox.current.scrollHeight;
+  }
 
   return (
     <main className="h-screen w-screen flex">
@@ -172,9 +209,9 @@ const Project = () => {
                 <div
                   key={index}
                   className={`${
-                    msg.sender?._id === "ai" ? "max-w-80" : "max-w-52"
+                    msg.sender?._id === "ai" ? "max-w-80" : "max-w-54"
                   } ${
-                    msg.sender?._id === user._id.toString()
+                    msg.sender?._id == user._id.toString()
                       ? "ml-auto"
                       : "mr-auto"
                   } message flex flex-col p-2 bg-slate-50 w-fit rounded-md`}
@@ -237,6 +274,136 @@ const Project = () => {
               })}
           </div>
         </div>
+      </section>
+
+      <section className="right bg-orange-400 flex-grow h-full flex">
+        <div className="explorer h-full max-w-64 min-w-52 bg-slate-200">
+          <div className="file-tree w-full">
+            {Object.keys(fileTree).map((file, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  setCurrentFile(file);
+                  setOpenFiles([...new Set([...openFiles, file])]);
+                }}
+                className="tree-element cursor-pointer p-2 px-4 flex items-center gap-2 bg-slate-200 w-full"
+              >
+                <p className="font-semibold text-lg">{file}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="code-editor flex flex-col flex-grow h-full">
+          <div className="top flex justify-between w-full">
+            <div className="files flex">
+              {openFiles.map((file, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentFile(file)}
+                  className={`open-file cursor-pointer p-2 px-4 flex items-center w-fit gap-2 bg-slate-300 ${
+                    currentFile === file ? "bg-slate-400" : ""
+                  }`}
+                >
+                  <p className="font-semibold text-lg">{file}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="actions flex gap-2">
+              <button
+                onClick={async () => {
+                  await webContainer?.mount(fileTree);
+
+                  const installProcess = await webContainer.spawn("npm", [
+                    "install",
+                  ]);
+                  installProcess.output.pipeTo(
+                    new WritableStream({
+                      write(chunk) {
+                        console.log(chunk);
+                      },
+                    })
+                  );
+
+                  if (runProcess){
+                    runProcess.kill();
+                  }
+
+                  let tempRunProcess = await webContainer.spawn("npm", ["start"]);
+                  tempRunProcess.output.pipeTo(
+                    new WritableStream({
+                      write(chunk) {
+                        console.log(chunk);
+                      },
+                    })
+                  );
+
+                  setRunProcess(tempRunProcess)
+
+                  webContainer.on("server-ready", (port, url) => {
+                    console.log(port, url);
+                    setIframeUrl(url);
+                  });
+                }}
+                className="p-2 px-4 bg-slate-300 text-white"
+              >
+                Run
+              </button>
+            </div>
+          </div>
+          <div className="bottom flex flex-grow max-w-full shrink overflow-auto">
+            {fileTree[currentFile] && fileTree[currentFile].file && (
+              <div className="code-editor-area h-full overflow-auto flex-grow bg-slate-50">
+                <pre className="hljs h-full">
+                  <code
+                    className="hljs h-full outline-none"
+                    contentEditable
+                    suppressContentEditableWarning
+                    onBlur={(e) => {
+                      const updatedContent = e.target.innerText;
+                      const ft = {
+                        ...fileTree,
+                        [currentFile]: {
+                          file: {
+                            contents: updatedContent,
+                          },
+                        },
+                      };
+                      setFileTree(ft);
+                      saveFileTree(ft);
+                    }}
+                    dangerouslySetInnerHTML={{
+                      __html: hljs.highlight(
+                        "javascript",
+                        fileTree[currentFile].file.contents || ""
+                      ).value,
+                    }}
+                    style={{
+                      whiteSpace: "pre-wrap",
+                      paddingBottom: "25rem",
+                      counterSet: "line-numbering",
+                    }}
+                  />
+                </pre>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {iframeUrl && webContainer && (
+          <div className="flex min-w-96 flex-col h-full">
+            <div className="address-bar">
+              <input
+                type="text"
+                onChange={(e) => setIframeUrl(e.target.value)}
+                value={iframeUrl}
+                className="w-full p-2 px-4 bg-slate-200"
+              />
+            </div>
+            <iframe src={iframeUrl} className="w-full h-full"></iframe>
+          </div>
+        )}
       </section>
 
       {isModalOpen && (
