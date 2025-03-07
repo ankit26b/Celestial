@@ -56,11 +56,9 @@ export const loginController = async(req, res)=>{
 }
 
 export const profileController = async (req, res)=>{
-     console.log(req.user);
-
-     res.status(200).json({
+    res.status(200).json({
         user: req.user
-     })
+    })
 }
 
 export const logoutController = async(req,res)=>{

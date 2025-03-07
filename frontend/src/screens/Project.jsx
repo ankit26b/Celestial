@@ -88,20 +88,13 @@ const Project = () => {
   };
 
   function WriteAiMessage(message) {
-    let messageText;
-
-    try {
-      const messageObject = JSON.parse(message);
-      messageText = messageObject.text;
-    } catch (error) {
-      console.error("Invalid JSON:", error);
-      messageText = message;
-    }
+    
+    const messageObject = JSON.parse(message)
 
     return (
       <div className="overflow-auto bg-slate-950 text-white rounded-sm p-2">
         <Markdown
-          children={messageText}
+          children={messageObject.text}
           options={{
             overrides: {
               code: SyntaxHighlightedCode,
@@ -123,14 +116,24 @@ const Project = () => {
     }
 
     receiveMessage("project-message", (data) => {
-      const message = JSON.parse(data.message);
-      console.log(message);
-      webContainer?.mount(message.fileTree);
+      console.log(data);
+      
+      if (data.sender._id == 'ai') {
 
-      if (message.fileTree) {
-        setFileTree(message.fileTree || {});
+
+        const message = JSON.parse(data.message)
+
+        console.log(message)
+
+        webContainer?.mount(message.fileTree)
+
+        if (message.fileTree) {
+          setFileTree(message.fileTree || {})
+        }
+        setMessages(prevMessages => [ ...prevMessages, data ])
+      }else {
+        setMessages(prevMessages => [ ...prevMessages, data ]) // Update messages state
       }
-      setMessages((prevMessages) => [...prevMessages, data]);
     });
 
     axios
@@ -142,7 +145,7 @@ const Project = () => {
       });
 
     axios
-      .get("users/all")
+      .get("/users/all")
       .then((res) => {
         setUsers(res.data.users);
       })
@@ -151,16 +154,16 @@ const Project = () => {
       });
   }, []);
 
-  useEffect(() => {
-    console.log("Current File:", currentFile);
-    console.log("FileTree:", fileTree);
-  }, [currentFile, fileTree]);
+  // useEffect(() => {
+  //   console.log("Current File:", currentFile);
+  //   console.log("FileTree:", fileTree);
+  // }, [currentFile, fileTree]);
 
-  useEffect(() => {
-    if (messageBox.current) {
-      messageBox.current.scrollTop = messageBox.current.scrollHeight;
-    }
-  }, [messages]);
+  // useEffect(() => {
+  //   if (messageBox.current) {
+  //     messageBox.current.scrollTop = messageBox.current.scrollHeight;
+  //   }
+  // }, [messages]);
 
   function saveFileTree(ft) {
     axios
