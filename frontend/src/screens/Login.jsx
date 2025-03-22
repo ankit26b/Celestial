@@ -1,6 +1,6 @@
-import React, { useState, useContext } from "react";
+import React, { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from '../config/axios'
+import axios from '../config/axios';
 import { UserContext } from "../context/user.context";
 
 const Login = () => {
@@ -32,42 +32,42 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 " style={{background:"url('../public/celestial.webp')"}}>
+      <div className="bg-gray-950 p-8 rounded-lg shadow-lg w-full max-w-md" >
         <h2 className="text-2xl font-bold text-white mb-6">Login</h2>
         <form onSubmit={submitHandler}>
           <div className="mb-4">
-            <label className="block text-gray-400 mb-2" htmlFor="email">
+            <label className="block text-white mb-2" htmlFor="email">
               Email
             </label>
             <input
               onChange={(e) => setEmail(e.target.value)}
               type="email"
               id="email"
-              className="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 rounded bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-white"
               placeholder="Enter your email"
             />
           </div>
           <div className="mb-6">
-            <label className="block text-gray-400 mb-2" htmlFor="password">
+            <label className="block text-white mb-2" htmlFor="password">
               Password
             </label>
             <input
               onChange={(e) => setPassword(e.target.value)}
               type="password"
               id="password"
-              className="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 rounded bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-white"
               placeholder="Enter your password"
             />
           </div>
           <button
             type="submit"
-            className="w-full p-3 rounded bg-blue-500 text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-3 rounded bg-white text-black hover:bg-white focus:outline-none focus:ring-2 focus:ring-black"
           >
             Login
           </button>
         </form>
-        <p className="text-gray-400 mt-4">
+        <p className="text-white  mt-4">
           Don't have an account?{" "}
           <Link to="/register" className="text-blue-500 hover:underline">
             Create one
